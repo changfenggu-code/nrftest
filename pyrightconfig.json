@@ -1,0 +1,17 @@
+// Zed/Pyright 的编辑器类型检查配置。
+// 它让编辑器检查活动 Python 源码并使用 Pixi default 环境；不负责安装依赖或运行测试。
+{
+  "include": [
+    "host",
+    "tools",
+    "tests"
+  ],
+  "exclude": [
+    "archive",
+    ".pixi",
+    ".work"
+  ],
+  "venvPath": ".pixi/envs",
+  "venv": "default",
+  "pythonVersion": "3.12"
+}

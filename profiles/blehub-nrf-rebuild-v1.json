@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "profile_id": "blehub-nrf52840-rebuild-gatt-v1",
+  "advertising": {
+    "local_name": "BleHubNrfRebuild",
+    "require_local_name": false,
+    "service_uuids": [
+      "fd000001-0000-4000-8000-000000000000"
+    ]
+  },
+  "services": [
+    {
+      "uuid": "fd000001-0000-4000-8000-000000000000",
+      "primary": true,
+      "advertise": true,
+      "characteristics": [
+        {
+          "role": "read-write",
+          "uuid": "fff10001-0000-4000-8000-000000000000",
+          "properties": [
+            "read",
+            "write",
+            "write_without_response"
+          ],
+          "initial_value_hex": "01"
+        },
+        {
+          "role": "updates",
+          "uuid": "fff20001-0000-4000-8000-000000000000",
+          "properties": [
+            "read",
+            "notify",
+            "indicate"
+          ],
+          "initial_value_hex": "02"
+        },
+        {
+          "role": "read-only",
+          "uuid": "fff30001-0000-4000-8000-000000000000",
+          "properties": [
+            "read"
+          ],
+          "initial_value_hex": "52656275696c64"
+        },
+        {
+          "role": "write-only",
+          "uuid": "fff40001-0000-4000-8000-000000000000",
+          "properties": [
+            "write",
+            "write_without_response"
+          ],
+          "initial_value_hex": "03"
+        }
+      ]
+    }
+  ]
+}

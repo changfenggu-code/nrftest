@@ -1,0 +1,26 @@
+# 固定无法由所有 Pixi Host 环境统一提供的构建辅助工具。
+# Windows 由 tools/setup_host_tools.py 安装 portable DTC/socat；macOS/Linux 使用 Pixi 包。
+
+schema_version = 1
+checked_at = "2026-09-06"
+
+[windows.dtc]
+version = "1.6.1"
+minimum_version = "1.4.6"
+source = "Zephyr v4.4.2 getting-started recommendation: winget package oss-winget.dtc"
+url = "https://github.com/oss-winget/oss-winget-storage/raw/96ea1b934342f45628a488d3b50d0c37cf06012c/packages/dtc/1.6.1/dtc-msys2-1.6.1-x86_64.zip"
+archive = "dtc-msys2-1.6.1-x86_64.zip"
+sha256 = "7aac366f989fd2450d5e641e118734653ea29d0ddb7dbfa33521d57afe852ae3"
+executable = "usr/bin/dtc.exe"
+license = "GPL-2.0"
+
+[windows.socat]
+version = "1.7.3.2"
+minimum_version = "1.7.3.2"
+source = "AutoPTS fixed-revision README Windows prerequisite"
+url = "https://sourceforge.net/projects/unix-utils/files/socat/1.7.3.2/socat-1.7.3.2-1-x86_64.zip/download"
+archive = "socat-1.7.3.2-1-x86_64.zip"
+sha256 = "b86e84d2a5dab2032b0b20558f58f3e8ae899a9bccaca74f6237b2af446ff019"
+executable = "socat-1.7.3.2-1-x86_64/socat.exe"
+license = "GPL-2.0-with-OpenSSL-exception"
+redistribution = "not-bundled"

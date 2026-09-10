@@ -1,0 +1,48 @@
+# nrftest 的本机配置模板；本文件本身不会作为当前机器的配置读取。
+# 复制为被版本控制忽略的 nrftest.local.toml，再填写本机工具链路径、设备和输出目录。
+# setup/build/package/flash 不会猜测安装根目录；缺少本机配置时会在执行前明确失败。
+# 版本、下载地址、校验和及许可证政策应保存在受版本控制的 lock/manifest 中。
+
+[toolchains]
+# Choose one dedicated upstream root per machine. The Windows E:/dev layout is shown here;
+# macOS/Linux developers should select suitable absolute paths on that machine.
+# zephyr_root = "E:/dev/nrftest-upstream/zephyrproject/zephyr"
+# zephyr_sdk_root = "E:/dev/nrftest-upstream/zephyr-sdk-1.0.1"
+# autopts_root = "E:/dev/nrftest-upstream/auto-pts"
+# ncs_root is optional reference-only state; the active firmware baseline is upstream Zephyr.
+# ncs_root = "E:/dev/v3.4.0"
+
+
+[tools]
+# Windows: setup-host-tools installs pinned portable DTC and socat under this root.
+# macOS/Linux: dtc and socat come from the platform's Pixi environment.
+# host_tools_root = "E:/dev/nrftest-upstream/host-tools"
+# dtc = "E:/dev/nrftest-upstream/host-tools/dtc-1.6.1/usr/bin/dtc.exe"
+# socat = "E:/dev/nrftest-upstream/host-tools/socat-1.7.3.2/socat-1.7.3.2-1-x86_64/socat.exe"
+# Installed by the explicit setup-firmware-tools recipe; do not select a global nrfutil.
+# programmer = "E:/dev/nrftest-upstream/host-tools/nrfutil-8.2.1/bin/nrfutil.exe"
+# Optional Phase 4 recovery backend. Install SEGGER J-Link Software separately and select its
+# native library explicitly; nrftest does not download or redistribute SEGGER software.
+# Windows example: jlink_library = "C:/Program Files/SEGGER/JLink/JLinkARM.dll"
+# macOS example: jlink_library = "/Applications/SEGGER/JLink/libjlinkarm.dylib"
+# Linux example: jlink_library = "/opt/SEGGER/JLink/libjlinkarm.so"
+
+[device]
+# PCA10059 application firmware USB hardware serial (NRFTEST_DEVICE_SERIAL). This identifies
+# the normal Tester application device; it is not the stock bootloader USB serial below.
+# serial = "application-hardware-serial"
+# PCA10059 stock bootloader USB serial (NRFTEST_BOOTLOADER_SERIAL). Flashing requires this
+# distinct identity explicitly, and --bootloader-serial may override it for one invocation.
+# bootloader_serial = "bootloader-hardware-serial"
+# The COM/tty name is rediscovered after reset and is not a substitute for either serial.
+# port = "COM11"
+# External SEGGER J-Link hardware serial connected to the PCA10059 SWD pads.
+# debugger_serial = "123456789"
+
+[paths]
+# Relative paths resolve from the nrftest project root.
+build = ".work/build"
+cache = ".work/cache"
+# The project-local default is .work/downloads; override it for a persistent shared cache.
+# downloads = "E:/dev/downloads"
+reports = ".work/reports"

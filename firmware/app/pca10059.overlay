@@ -1,0 +1,10 @@
+/*
+ * PCA10059 的 Zephyr Devicetree 补充配置：将板级 USB CDC ACM UART
+ * 指定为 Bluetooth Tester 的二进制 BTP uart-pipe transport。
+ */
+
+/ {
+	chosen {
+		zephyr,uart-pipe = &board_cdc_acm_uart;
+	};
+};

@@ -1,0 +1,52 @@
+# Project commands run through Pixi, for example:
+#   pixi run just setup
+
+set dotenv-load := false
+set unstable
+set lists
+
+nrfutil_device_version := "2.20.1"
+nrfutil_driver_url := "https://raw.githubusercontent.com/nordicsemi/pc-nrfconnect-launcher/2485ffcdde7444b203f3f140d2205521fcc3573f/build/drivers/nrf-device-lib-driver-installer.exe"
+nrfutil_driver_sha256 := "c914a1572b2b14ca02ecb895ed7415e3dca40df4ef942aeaf2e645c00788fa2a"
+nrf_udev_version := "1.0.1"
+nrf_udev_url := "https://github.com/NordicSemiconductor/nrf-udev/releases/download/v" + nrf_udev_version + "/nrf-udev_" + nrf_udev_version + "-all.deb"
+nrfutil_root := justfile_directory() / ".tools" / "nrfutil"
+nrfutil_filename := if os() == "windows" { "nrfutil.exe" } else { "nrfutil" }
+nrfutil_path := nrfutil_root / nrfutil_filename
+nrf_udev_path := justfile_directory() / ".tools" / "nrf-udev" / ("nrf-udev_" + nrf_udev_version + "-all.deb")
+nrfutil_url := if os() == "windows" && arch() == "x86_64" { "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-pc-windows-msvc/nrfutil" } else if os() == "linux" && arch() == "x86_64" { "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil" } else if os() == "linux" && arch() == "aarch64" { "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/aarch64-unknown-linux-gnu/nrfutil" } else if os() == "macos" { "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/universal-apple-darwin/nrfutil" } else { "" }
+nrfutil_command := if os() == "windows" { '"' + nrfutil_path + '"' } else { quote(nrfutil_path) }
+nrf_device_driver_command := if os() == "windows" { "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " + '"' + justfile_directory() + "/dev/install-nrf-device-lib-driver.ps1" + '"' + " -Uri " + '"' + nrfutil_driver_url + '"' + " -Sha256 " + '"' + nrfutil_driver_sha256 + '"' } else if os() == "linux" { "mkdir -p " + quote(parent_directory(nrf_udev_path)) + " && curl --fail --location --output " + quote(nrf_udev_path) + " " + quote(nrf_udev_url) + " && sudo dpkg --install " + quote(nrf_udev_path) } else { "echo " + '"' + "Skipping additional nRF USB permission setup: macOS does not require nRF udev rules." + '"' }
+nrfutil_download_command := if nrfutil_url == "" { if os_family() == "windows" { "echo Unsupported nRF Util platform: " + os() + "/" + arch() + " 1>&2 & exit /b 1" } else { "printf '%s\\n' 'Unsupported nRF Util platform: " + os() + "/" + arch() + "' 1>&2; exit 1" } } else if os() == "windows" { "if not exist " + '"' + nrfutil_root + '"' + " mkdir " + '"' + nrfutil_root + '"' + " && curl.exe --fail --location --output " + '"' + nrfutil_path + '"' + " " + '"' + nrfutil_url + '"' } else { "mkdir -p " + quote(nrfutil_root) + " && curl --fail --location --output " + quote(nrfutil_path) + " " + quote(nrfutil_url) + " && chmod +x " + quote(nrfutil_path) }
+
+# Show the available project commands.
+default:
+    @just --list
+
+# Install the external Nordic tooling required by this project.
+setup: install-nrf-device-driver install-nrfutil-device
+
+# Install the platform-specific USB access prerequisite from Nordic.
+install-nrf-device-driver:
+    @{{ nrf_device_driver_command }}
+
+# Download the nRF Util executable from Nordic's official web endpoint.
+install-nrfutil:
+    @{{ nrfutil_download_command }}
+
+# Install the nRF Util device command used for programming and discovery.
+install-nrfutil-device: install-nrfutil
+    @{{ nrfutil_command }} install device={{ nrfutil_device_version }}
+
+# Print the installed Nordic tool versions and command inventory.
+check-tools:
+    @{{ nrfutil_command }} --version
+    @{{ nrfutil_command }} list
+
+# Open one Connectivity session, report metadata, and close it without flashing.
+nrf-doctor port:
+    pixi run python -m host.nrftest.cli --port {{ port }} doctor
+
+# Run the NDJSON Peripheral control service. Commands arrive on stdin.
+nrf-serve port:
+    pixi run python -m host.nrftest.cli --port {{ port }} serve

@@ -1,0 +1,14 @@
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# Local tool downloads
+/.tools/
+
+# Local driver inspection artifact
+/dev/.nrf-device-lib-driver-inspection.exe
+
+# Python build and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/

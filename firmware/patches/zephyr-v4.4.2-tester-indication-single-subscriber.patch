@@ -1,0 +1,85 @@
+--- a/src/btp_gatt.c
++++ b/src/btp_gatt.c
+@@ -786,11 +786,51 @@
+ 	}
+ }
+ 
++struct indication_subscriber {
++	const struct bt_gatt_attr *attr;
++	struct bt_conn *conn;
++	size_t count;
++};
++
++static void find_indication_subscriber(struct bt_conn *conn, void *user_data)
++{
++	struct indication_subscriber *subscriber = user_data;
++
++	if (!bt_gatt_is_subscribed(conn, subscriber->attr, BT_GATT_CCC_INDICATE)) {
++		return;
++	}
++
++	subscriber->count++;
++	if (subscriber->count == 1U) {
++		subscriber->conn = bt_conn_ref(conn);
++	}
++}
++
++static int indicate_single_subscriber(struct bt_gatt_indicate_params *params)
++{
++	struct indication_subscriber subscriber = { .attr = params->attr };
++	int err;
++
++	bt_conn_foreach(BT_CONN_TYPE_LE, find_indication_subscriber, &subscriber);
++	if (subscriber.count != 1U) {
++		if (subscriber.conn) {
++			bt_conn_unref(subscriber.conn);
++		}
++
++		return subscriber.count == 0U ? -ENOTCONN : -E2BIG;
++	}
++
++	err = bt_gatt_indicate(subscriber.conn, params);
++	bt_conn_unref(subscriber.conn);
++	return err;
++}
++
+ static uint8_t alloc_value(struct bt_gatt_attr *attr, struct set_value *data)
+ {
+ 	struct gatt_value *value;
+ 	uint8_t ccc_value;
+ 	int i;
++	int err;
+ 
+ 	/* Value has been already set while adding CCC to the gatt_db */
+ 	if (!bt_uuid_cmp(attr->uuid, BT_UUID_GATT_CCC)) {
+@@ -828,7 +868,7 @@
+ 
+ 	if (tester_test_bit(value->flags, GATT_VALUE_CCC_FLAG) && ccc_value) {
+ 		if (ccc_value == BT_GATT_CCC_NOTIFY) {
+-			bt_gatt_notify(NULL, attr, value->data, value->len);
++			err = bt_gatt_notify(NULL, attr, value->data, value->len);
+ 		} else {
+ 			indicate_params.attr = attr;
+ 			indicate_params.data = value->data;
+@@ -839,7 +879,11 @@
+ 			indicate_params.chan_opt = BT_ATT_CHAN_OPT_NONE;
+ #endif
+ 
+-			bt_gatt_indicate(NULL, &indicate_params);
++			err = indicate_single_subscriber(&indicate_params);
++		}
++
++		if (err) {
++			return BTP_STATUS_FAILED;
+ 		}
+ 	}
+ 
+@@ -876,7 +920,7 @@
+ 				     &cmd_data);
+ 	}
+ 
+-	return BTP_STATUS_SUCCESS;
++	return status;
+ }
+ 
+ static uint8_t start_server(const void *cmd, uint16_t cmd_len,

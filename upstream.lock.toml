@@ -1,0 +1,21 @@
+# 固定 nrftest 使用的 Zephyr、Zephyr SDK 和 AutoPTS 上游版本、来源及许可证证据。
+# tools/setup_upstream.py 使用这些固定值安装和验证源码；本机安装路径由 nrftest.local.toml 提供。
+
+schema_version = 1
+checked_at = "2026-09-06"
+
+[zephyr]
+repository = "https://github.com/zephyrproject-rtos/zephyr.git"
+tag = "v4.4.2"
+commit = "dccb09599635bdff17633fa7e9dab014b91dce90"
+sdk_version = "1.0.1"
+sdk_installer = "west sdk install"
+sdk_gnu_toolchains = ["arm-zephyr-eabi"]
+license = "Apache-2.0"
+
+[autopts]
+repository = "https://github.com/auto-pts/auto-pts.git"
+branch = "master"
+commit = "54e81c7f3495bce72e5f688e9c996b85b8272799"
+license = "GPL-2.0"
+btp_compatibility = "unverified; requires the Phase 0 direct probe"

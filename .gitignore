@@ -1,0 +1,34 @@
+# Machine-local configuration and environments
+/nrftest.local.toml
+/.pixi/
+/.work/
+/.tools/
+/.cache/
+/.venv/
+/venv/
+.env
+.env.*
+!.env.example
+
+# Python caches, coverage, and package output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Generated build metadata
+/compile_commands.json
+
+# Operating-system and shell metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+/NUL

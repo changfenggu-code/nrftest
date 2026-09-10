@@ -1,0 +1,111 @@
+--- a/src/btp_gatt.c
++++ b/src/btp_gatt.c
+@@ -786,10 +786,54 @@
+ 	}
+ }
+ 
++struct gatt_subscriber {
++	const struct bt_gatt_attr *attr;
++	uint16_t ccc_type;
++	struct bt_conn *conn;
++	size_t count;
++};
++
++static void find_gatt_subscriber(struct bt_conn *conn, void *user_data)
++{
++	struct gatt_subscriber *subscriber = user_data;
++
++	if (!bt_gatt_is_subscribed(conn, subscriber->attr, subscriber->ccc_type)) {
++		return;
++	}
++
++	subscriber->count++;
++	if (subscriber->count == 1U) {
++		subscriber->conn = bt_conn_ref(conn);
++	}
++}
++
++static int get_single_subscriber(const struct bt_gatt_attr *attr, uint16_t ccc_type,
++				 struct bt_conn **conn)
++{
++	struct gatt_subscriber subscriber = {
++		.attr = attr,
++		.ccc_type = ccc_type,
++	};
++
++	bt_conn_foreach(BT_CONN_TYPE_LE, find_gatt_subscriber, &subscriber);
++	if (subscriber.count != 1U) {
++		if (subscriber.conn) {
++			bt_conn_unref(subscriber.conn);
++		}
++
++		return subscriber.count == 0U ? -ENOTCONN : -E2BIG;
++	}
++
++	*conn = subscriber.conn;
++	return 0;
++}
++
+ static uint8_t alloc_value(struct bt_gatt_attr *attr, struct set_value *data)
+ {
+ 	struct gatt_value *value;
++	struct bt_conn *conn = NULL;
+ 	uint8_t ccc_value;
++	int err;
+ 	int i;
+ 
+ 	/* Value has been already set while adding CCC to the gatt_db */
+@@ -828,18 +872,33 @@
+ 
+ 	if (tester_test_bit(value->flags, GATT_VALUE_CCC_FLAG) && ccc_value) {
+ 		if (ccc_value == BT_GATT_CCC_NOTIFY) {
+-			bt_gatt_notify(NULL, attr, value->data, value->len);
++			err = get_single_subscriber(attr, BT_GATT_CCC_NOTIFY, &conn);
++			if (!err) {
++				err = bt_gatt_notify(conn, attr, value->data, value->len);
++			}
++		} else if (ccc_value == BT_GATT_CCC_INDICATE) {
++			err = get_single_subscriber(attr, BT_GATT_CCC_INDICATE, &conn);
++			if (!err) {
++				indicate_params.attr = attr;
++				indicate_params.data = value->data;
++				indicate_params.len = value->len;
++				indicate_params.func = indicate_cb;
++				indicate_params.destroy = NULL;
++#if defined(CONFIG_BT_EATT)
++				indicate_params.chan_opt = BT_ATT_CHAN_OPT_NONE;
++#endif
++
++				err = bt_gatt_indicate(conn, &indicate_params);
++			}
+ 		} else {
+-			indicate_params.attr = attr;
+-			indicate_params.data = value->data;
+-			indicate_params.len = value->len;
+-			indicate_params.func = indicate_cb;
+-			indicate_params.destroy = NULL;
+-#if defined(CONFIG_BT_EATT)
+-			indicate_params.chan_opt = BT_ATT_CHAN_OPT_NONE;
+-#endif
+-
+-			bt_gatt_indicate(NULL, &indicate_params);
++			err = -EINVAL;
++		}
++
++		if (conn) {
++			bt_conn_unref(conn);
++		}
++		if (err) {
++			return BTP_STATUS_FAILED;
+ 		}
+ 	}
+ 
+@@ -876,7 +935,7 @@
+ 				     &cmd_data);
+ 	}
+ 
+-	return BTP_STATUS_SUCCESS;
++	return status;
+ }
+ 
+ static uint8_t start_server(const void *cmd, uint16_t cmd_len,

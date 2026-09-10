@@ -1,0 +1,41 @@
+--- a/src/btp_gatt.c
++++ b/src/btp_gatt.c
+@@ -791,6 +791,7 @@
+ 	struct gatt_value *value;
+ 	uint8_t ccc_value;
+ 	int i;
++	int err;
+ 
+ 	/* Value has been already set while adding CCC to the gatt_db */
+ 	if (!bt_uuid_cmp(attr->uuid, BT_UUID_GATT_CCC)) {
+@@ -828,7 +829,7 @@
+ 
+ 	if (tester_test_bit(value->flags, GATT_VALUE_CCC_FLAG) && ccc_value) {
+ 		if (ccc_value == BT_GATT_CCC_NOTIFY) {
+-			bt_gatt_notify(NULL, attr, value->data, value->len);
++			err = bt_gatt_notify(NULL, attr, value->data, value->len);
+ 		} else {
+ 			indicate_params.attr = attr;
+ 			indicate_params.data = value->data;
+@@ -839,7 +840,11 @@
+ 			indicate_params.chan_opt = BT_ATT_CHAN_OPT_NONE;
+ #endif
+ 
+-			bt_gatt_indicate(NULL, &indicate_params);
++			err = bt_gatt_indicate(NULL, &indicate_params);
++		}
++
++		if (err) {
++			return BTP_STATUS_FAILED;
+ 		}
+ 	}
+ 
+@@ -876,7 +881,7 @@
+ 				     &cmd_data);
+ 	}
+ 
+-	return BTP_STATUS_SUCCESS;
++	return status;
+ }
+ 
+ static uint8_t start_server(const void *cmd, uint16_t cmd_len,

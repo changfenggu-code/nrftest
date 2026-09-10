@@ -1,0 +1,15 @@
+# nrftest 的项目级 Python 工具配置。
+# pytest 从这里读取测试发现规则，Ruff 从这里读取格式化和静态检查规则；
+# 本文件不保存本机工具链路径或硬件信息，也暂不用于发布 Python 包。
+
+[tool.pytest.ini_options]
+pythonpath = [".", "host"]
+testpaths = ["tests/unit"]
+
+[tool.ruff]
+exclude = ["archive", ".pixi", ".work"]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]

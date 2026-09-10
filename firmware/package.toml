@@ -1,0 +1,10 @@
+# 定义 Zephyr Tester HEX 封装为 PCA10059 stock nRF5 SDK bootloader DFU ZIP 时使用的元数据。
+# tools/package_firmware.py 读取本文件；这里不保存工具版本、本机路径，也不会执行设备刷写。
+
+schema_version = 1
+format = "nrf5-sdk-secure-dfu"
+hardware_version = 52
+softdevice_requirement = "0x00"
+application_version = 1
+signed = false
+source = "Zephyr v4.4.2 nrf52840dongle board documentation"

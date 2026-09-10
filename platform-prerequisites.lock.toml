@@ -1,0 +1,23 @@
+# 固定设备访问与恢复路径的系统级平台安装项。
+# Host runtime 由 Pixi 管理；这里只由显式 setup-platform-provisioning 处理 driver/udev。
+# Windows/Linux 安装可能修改系统，需要 UAC/sudo；macOS 当前无额外安装项。
+
+schema_version = 1
+checked_at = "2026-09-10"
+
+[windows.nrf_device_lib]
+version = "launcher-2485ffcdde7444b203f3f140d2205521fcc3573f"
+url = "https://raw.githubusercontent.com/nordicsemi/pc-nrfconnect-launcher/2485ffcdde7444b203f3f140d2205521fcc3573f/build/drivers/nrf-device-lib-driver-installer.exe"
+archive = "nrf-device-lib-driver-installer.exe"
+sha256 = "c914a1572b2b14ca02ecb895ed7415e3dca40df4ef942aeaf2e645c00788fa2a"
+source = "Nordic nRF device-lib driver installer pinned by the archived setup"
+license = "Nordic installer terms"
+
+[linux.nrf_udev]
+version = "1.0.1"
+url = "https://github.com/NordicSemiconductor/nrf-udev/releases/download/v1.0.1/nrf-udev_1.0.1-all.deb"
+archive = "nrf-udev_1.0.1-all.deb"
+sha256 = "e527d5fc187ef829797e8d2f5a4a4a6ab19e04db2aeec0900d63c57dec12e41f"
+package_manager = "dpkg"
+source = "NordicSemiconductor nrf-udev v1.0.1"
+license = "MIT"

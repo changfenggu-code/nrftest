@@ -1,0 +1,54 @@
+# 固定各支持平台使用的 Nordic nRF Util 和 nrf5sdk-tools 下载、版本及校验信息。
+# tools/setup_firmware_tools.py 只在本机显式安装这些工具；受许可证限制的二进制不会随项目分发。
+
+schema_version = 1
+checked_at = "2026-09-06"
+
+[nrfutil]
+version = "8.2.1"
+commit = "350d1fdcdf82d30c115ebb08bdbb9717937f37ac"
+bootstrap_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/index/bootstrap.json"
+license = "LicenseRef-Nordic-1-Clause"
+license_url = "https://docs.nordicsemi.com/bundle/nrfutil/page/README.html#licenses"
+redistribution = "prohibited"
+
+[nrfutil.command]
+name = "nrf5sdk-tools"
+version = "1.1.0"
+commit = "30dc218a99ce1abd296f9ff5de836eacda2cc474"
+inner_version = "6.1.7"
+license = "LicenseRef-Nordic-1-Clause"
+redistribution = "prohibited"
+
+[platforms."win-64"]
+target = "x86_64-pc-windows-msvc"
+cli_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-x86_64-pc-windows-msvc-8.2.1.tar.gz"
+cli_archive = "nrfutil-x86_64-pc-windows-msvc-8.2.1.tar.gz"
+cli_sha256 = "701f1b0b7c3131c9f4df1e4de3aba6a311ece67656438a3c8a4a37cb7a2df147"
+cli_archive_root = "nrfutil-x86_64-pc-windows-msvc-8.2.1"
+cli_executable = "bin/nrfutil.exe"
+command_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil-nrf5sdk-tools/nrfutil-nrf5sdk-tools-x86_64-pc-windows-msvc-1.1.0.tar.gz"
+command_archive = "nrfutil-nrf5sdk-tools-x86_64-pc-windows-msvc-1.1.0.tar.gz"
+command_sha256 = "1b4d3da845107573c641899594677427ec178a81e55df65eaa3c94a74028e201"
+
+[platforms."osx-arm64"]
+target = "aarch64-apple-darwin"
+cli_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-aarch64-apple-darwin-8.2.1.tar.gz"
+cli_archive = "nrfutil-aarch64-apple-darwin-8.2.1.tar.gz"
+cli_sha256 = "3162977182e1fe712dff1ab353de0471dfd63d2d9b7d4cc197d2c77987a959cc"
+cli_archive_root = "nrfutil-aarch64-apple-darwin-8.2.1"
+cli_executable = "bin/nrfutil"
+command_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil-nrf5sdk-tools/nrfutil-nrf5sdk-tools-aarch64-apple-darwin-1.1.0.tar.gz"
+command_archive = "nrfutil-nrf5sdk-tools-aarch64-apple-darwin-1.1.0.tar.gz"
+command_sha256 = "4db1a643c36efe7e189a2910f0d0fb6960848d6bc3e778d9a8815c1249ca405a"
+
+[platforms."linux-64"]
+target = "x86_64-unknown-linux-gnu"
+cli_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil/nrfutil-x86_64-unknown-linux-gnu-8.2.1.tar.gz"
+cli_archive = "nrfutil-x86_64-unknown-linux-gnu-8.2.1.tar.gz"
+cli_sha256 = "903b77831aee52998fc03e271086af5a9f30558bdef3bd314eb3b601440cab0a"
+cli_archive_root = "nrfutil-x86_64-unknown-linux-gnu-8.2.1"
+cli_executable = "bin/nrfutil"
+command_url = "https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/packages/nrfutil-nrf5sdk-tools/nrfutil-nrf5sdk-tools-x86_64-unknown-linux-gnu-1.1.0.tar.gz"
+command_archive = "nrfutil-nrf5sdk-tools-x86_64-unknown-linux-gnu-1.1.0.tar.gz"
+command_sha256 = "84b4214c46b917696b171a692a656b0f93e7200dc93dc3ff33fafd6d88b31e4f"
