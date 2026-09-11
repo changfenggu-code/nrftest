@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from tools.build_firmware import (
+    REQUIRED_CONFIG,
     FirmwareBuildError,
     _build_environment,
     _write_manifest,
@@ -60,6 +61,8 @@ def test_generated_config_and_flash_preserve_bootloader_boundaries(tmp_path: Pat
                 "CONFIG_FLASH_LOAD_OFFSET=0x1000",
                 "CONFIG_UART_PIPE=y",
                 "# CONFIG_UART_CONSOLE is not set",
+                "# CONFIG_CONSOLE is not set",
+                "# CONFIG_PRINTK is not set",
                 "CONFIG_HWINFO=y",
                 "# CONFIG_BOOT_BANNER is not set",
                 "# CONFIG_TEST_LOGGING_DEFAULTS is not set",
@@ -83,6 +86,17 @@ def test_generated_config_and_flash_preserve_bootloader_boundaries(tmp_path: Pat
     assert validate_flash_segments([(0x1000, 0xDFFFF), (0x10001000, 0x10001010)]) == [
         (0x1000, 0xDFFFF)
     ]
+
+
+@pytest.mark.parametrize(
+    "symbol", ["CONFIG_CONSOLE", "CONFIG_PRINTK", "CONFIG_UART_CONSOLE", "CONFIG_LOG"]
+)
+def test_btp_build_rejects_text_output(symbol: str) -> None:
+    values = dict(REQUIRED_CONFIG)
+    values[symbol] = "y"
+
+    with pytest.raises(FirmwareBuildError, match=f"{symbol}: expected n, found y"):
+        validate_required_config(values)
 
 
 @pytest.mark.parametrize("segments", [[(0x0, 0x1001)], [(0x1000, 0xE0001)], []])

@@ -1,5 +1,7 @@
 # `VIDLG/zephyr` Tester 集成报告
 
+本文记录首次 `b64b351b49c` 集成候选。后续 `f530afbe09cb` 纯净配置已消除本文第 7 节的 logging/console warning；最新配置、产物与诊断取舍见 [纯净配置验证](2026-09-11-zephyr-fork-pure-configuration.md)。两轮都未执行新固件 RF 验证。
+
 ## 1. 目的与结论范围
 
 本次变更将 nrftest 的 Zephyr 固件来源从官方 Zephyr v4.4.2 checkout 切换为项目专用的公开 fork：
