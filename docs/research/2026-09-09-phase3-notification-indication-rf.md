@@ -136,7 +136,7 @@ indication-only 候选的 Notification repeat failure 在同一 target 上连续
 活动补丁：
 
 ```text
-firmware/patches/zephyr-v4.4.2-tester-update-single-subscriber.patch
+firmware/patches/archive/zephyr-v4.4.2-tester-update-single-subscriber.patch
 SHA-256 1fddcb3316608711e658c016d70079c3bbd1fbea297e853e12543150a89653b1
 ```
 

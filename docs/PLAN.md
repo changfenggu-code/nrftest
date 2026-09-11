@@ -4,7 +4,7 @@
 
 - 计划状态：**已批准，Phase 0–4 已完成，Phase 5 进行中**。
 - 当前主线：Zephyr Bluetooth Tester + Bluetooth Test Protocol（BTP）+ 跨平台 Python Host。
-- 当前阶段：Windows x64 Phase 5 Host gate 已通过；跨平台源码/配置审计已加固全 Host AutoPTS 独占、固定 checkout 导入、DFU identity、setup preflight、Telemetry 和跨平台 Just 入口。Windows VC++ Runtime 已改由 Pixi `win-64` 环境直接管理；Nordic device-lib managed-install receipt 仅记录显式 UAC provisioning 来源，不替代 `host-doctor`/`firmware-flash` 功能证据，也不推翻已通过的 Windows Host gate。macOS Apple Silicon 与 Linux x64 实机门尚未执行；固定 AutoPTS pending-command/stop 无硬截止时间仍需独立设计决策。Phase 5 整体未通过。
+- 当前阶段：Windows x64 Phase 5 Host gate 已通过；跨平台源码/配置审计已加固全 Host AutoPTS 独占、固定 checkout 导入、DFU identity、setup preflight、Telemetry 和跨平台 Just 入口。Windows VC++ Runtime 已改由 Pixi `win-64` 环境直接管理；Nordic device-lib managed-install receipt 仅记录显式 UAC provisioning 来源，不替代 `host-doctor`/`firmware-flash` 功能证据，也不推翻已通过的 Windows Host gate。Zephyr Tester 修复已集成并 push 到 `VIDLG/zephyr` 的固定 commit，nrftest 正在进行 fork 基线的重新构建和 RF 回归；旧 v4.4.2 RF 结果不能外推到新 commit。macOS Apple Silicon 与 Linux x64 实机门尚未执行；固定 AutoPTS pending-command/stop 无硬截止时间仍需独立设计决策。Phase 5 整体未通过。
 - 旧的 Nordic Connectivity、`pc-ble-driver-py` 和 Blatann 实现已完整迁入 `archive/connectivity-blatann-2026-09-06/`，不再是活动实现，也不能用其历史结果证明 BTP 主线通过。
 - 本计划只约束 `nrftest`，不修改 BleHub 的公共 API、production backend 或架构文档。经用户明确批准，BleHub 可在自己的仓库中维护独立、通用、参数化的 HIL consumer；这不建立两个项目之间的代码、仓库或进程依赖。
 - 如果实施中需要偏离本计划的协议、拓扑、硬件角色、验证门或归档边界，必须停止并通知用户，得到明确批准后再修改计划和继续实施。
@@ -386,7 +386,7 @@ nRF Zephyr Host + Peripheral Controller/Radio
 | Tester/BTP Server 上游源码 | Zephyr Project |
 | BTP header/spec 和 Host/client | AutoPTS |
 | 固定 Zephyr/AutoPTS revision | `nrftest` 项目 |
-| PCA10059 最小 config/overlay 和必要 patch | `nrftest` 项目 |
+| PCA10059 最小 config/overlay；Tester 修复的 fork 集成维护 | `nrftest` 项目 / `VIDLG/zephyr` 专用 fork |
 | 可复现 firmware build/package recipe | `nrftest` 项目 |
 | 硬件验证、image SHA-256、许可证记录和发布 | `nrftest` 项目维护者/CI |
 | 向指定设备执行刷写 | 用户或硬件 CI，通过显式 `firmware-flash` recipe |
@@ -422,34 +422,35 @@ MCUboot + `mcumgr` serial recovery 可以作为后续升级方案，但首次安
 
 当前活动目录的 `firmware/app/pca10059.conf` 明确设置 `CONFIG_TEST_LOGGING_DEFAULTS=n` 和 `CONFIG_LOG=n`；正式 BTP CDC 不编译普通 logging，调试日志必须使用独立配置和独立 transport。Phase 0 stock 基线为 Flash `393484 B`、RAM `95256 B`，HEX SHA-256 `4a1a79fc123082a3ec987df10e566b4432a401aeee0bda351f7a50d9dff20308`，DFU ZIP SHA-256 `d53fa63143ad862de23cff4dcc3af68e538f94feafa1fcadb37e295029b25326`；它保留为控制面和 stock 行为对照。
 
-Phase 4 后默认 `firmware-build`、`firmware-package` 和 `firmware-flash` 指向固定 upstream 加 [`firmware/patches/zephyr-v4.4.2-tester-single-subscriber-database-lifecycle.patch`](../firmware/patches/zephyr-v4.4.2-tester-single-subscriber-database-lifecycle.patch) 的 project-managed candidate。组合 patch 保留 Phase 3 single-subscriber/status 修复，并修正动态 Service 的 0-based slot 和容量保护；不改变 BTP wire。构建入口不修改 upstream checkout：它把固定 Tester application 复制到 managed staging，依次执行 `git apply --check` 和 `git apply`，pristine build 后再把 upstream source、patch、patched source 和 `wire_protocol_changed=false` 写入 manifest。新候选 HEX SHA-256 为 `4dbce498501bfd0090880f8494761a99fbcba01d4e26bb00e1830b0cb9f7c2d5`，DFU ZIP SHA-256 为 `3393e36271aa31f4d93a6802765cb364030c482c51524961460539446fbb6715`。Phase 3 patch/产物继续作为历史证据保留；Phase 4 产物保存在 `.work/artifacts/single-subscriber-database-lifecycle-zephyr-v4.4.2/`。详细证据见 [`docs/research/2026-09-09-phase4-database-lifecycle-and-reset.md`](research/2026-09-09-phase4-database-lifecycle-and-reset.md)。
+Phase 4 的 project-managed candidate 使用固定 upstream 加组合 patch；该 patch 及对应产物仅作为历史证据保留。当前默认 `firmware-build`、`firmware-package` 和 `firmware-flash` 指向 `VIDLG/zephyr` 固定集成 commit `b64b351b49c027a1c56cb234f99538e168be315a`，构建时不复制 Tester、不应用本地 patch；manifest 记录 repository、commit 和 `tester_patch=null`。集成内容保持 BTP wire 不变，包含 single-subscriber/native status 修复、Service 0-based slot 修正和容量保护。切换 fork 后必须重新生成并验证 HEX/DFU identity，旧 v4.4.2 产物和 RF 证据不能外推。历史 patch 位于 [`firmware/patches/archive/`](../firmware/patches/archive/)，迁移说明见 [`2026-09-11-zephyr-fork-integration.md`](research/2026-09-11-zephyr-fork-integration.md)。
 
 官方入口：
 
-- <https://github.com/zephyrproject-rtos/zephyr/tree/main/tests/bluetooth/tester>
-- <https://github.com/zephyrproject-rtos/zephyr/blob/main/boards/nordic/nrf52840dongle/doc/index.rst>
+- <https://github.com/VIDLG/zephyr/tree/main/tests/bluetooth/tester>
+- <https://github.com/VIDLG/zephyr/blob/main/boards/nordic/nrf52840dongle/doc/index.rst>
+- <https://github.com/zephyrproject-rtos/zephyr/tree/main/tests/bluetooth/tester>（上游参考）
 
 ### 8.3 版本固定规则
 
-当前正式基线已选择 upstream Zephyr，不使用 NCS 所携带的 Zephyr 作为 firmware source：
+当前正式基线使用 `VIDLG/zephyr` 专用 fork，不使用 NCS 所携带的 Zephyr，也不在 nrftest 构建时应用本地 patch：
 
 ```text
-Zephyr repository: https://github.com/zephyrproject-rtos/zephyr.git
-Zephyr tag:        v4.4.2
-Zephyr commit:     dccb09599635bdff17633fa7e9dab014b91dce90
+Zephyr repository: https://github.com/VIDLG/zephyr.git
+Zephyr commit:     b64b351b49c027a1c56cb234f99538e168be315a
+Zephyr base:       upstream Zephyr main at fork creation (not a runtime pin)
 Zephyr SDK:        1.0.1
 GNU target:        arm-zephyr-eabi
 AutoPTS repository:https://github.com/auto-pts/auto-pts.git
 AutoPTS commit:    54e81c7f3495bce72e5f688e9c996b85b8272799
 ```
 
-Zephyr、SDK 和 AutoPTS 固定值记录在 `upstream.lock.toml`；Windows portable Host 工具的版本、来源、下载 URL、SHA-256、安装内相对路径和许可证记录在 `host-tools.lock.toml`；Nordic nRF Util CLI 与 `nrf5sdk-tools` command package 的三平台下载、版本、commit、SHA-256、许可证和禁止重新分发政策记录在 `firmware-tools.lock.toml`。当前 Windows 机器的受管安装是 nRF Util `8.2.1` + `nrf5sdk-tools 1.1.0`，后者内嵌兼容引擎 `6.1.7`。固定 AutoPTS commit 已在 Windows 上对固定 Zephyr `v4.4.2` 固件完成 BTP Core direct probe；这只证明当前 Core transport/capability 边界，不提前证明 GAP/GATT 具体命令或其他 Host 平台。当前 Windows 机器保留已有 `E:\dev\v3.4.0` NCS workspace，但 setup 不读取或修改它的 Zephyr source。
+Zephyr、SDK 和 AutoPTS 固定值记录在 `upstream.lock.toml`；Windows portable Host 工具的版本、来源、下载 URL、SHA-256、安装内相对路径和许可证记录在 `host-tools.lock.toml`；Nordic nRF Util CLI 与 `nrf5sdk-tools` command package 的三平台下载、版本、commit、SHA-256、许可证和禁止重新分发政策记录在 `firmware-tools.lock.toml`。当前 Zephyr 固定为 `VIDLG/zephyr` commit `b64b351b49c027a1c56cb234f99538e168be315a`；fork 中已集成 nrftest 所需 Tester 修复，nrftest 默认不再应用本地 patch。切换 fork 后必须重新完成 build/package/flash、BTP Core、GAP/GATT 和 RF 验证；旧 upstream v4.4.2 结果只保留作历史对照。当前 Windows 机器保留已有 `E:\dev\v3.4.0` NCS workspace，但 setup 不读取或修改它的 Zephyr source。
 
 Zephyr SDK installer 按执行主机选择基础包：Windows x64 使用 Windows x64 minimal，macOS Apple Silicon 使用 macOS AArch64 minimal，Linux x64 使用 Linux x64 minimal；三者再安装各自主机可执行、但目标均为 nRF52840 ARM 的 `arm-zephyr-eabi` 交叉编译器。普通 build/test 不自动安装，只有显式 setup recipe 执行下载。
 
 实施前必须固定:
 
-- Zephyr repository URL 和 commit/tag；
+- Zephyr repository URL 和固定 commit；
 - 如使用 NCS，固定 NCS manifest revision 和实际 Zephyr revision；
 - Zephyr SDK/toolchain version；
 - BTP header/spec 来源 revision；
@@ -780,9 +781,9 @@ AutoPTS 当前源码标示 GNU GPL v2。测试用途不自动构成许可证例�
 
 每下降一级都必须记录为什么上一级不可行。
 
-Phase 3 已按该顺序执行到第 4 级：原样 Tester 的 Notification 首轮通过，但 Indication 的 `bt_gatt_indicate(NULL, ...)` 在固定单连接实机上同步失败，且 Set Value 路径丢弃 allocation/native send status；只修 Indication 后，跨模式复跑又暴露 Notification `conn=NULL` failure。Kconfig/overlay 不能修复该 C 逻辑，另建完整 project app 会复制大量 Tester 实现。因此维护 [`firmware/patches/zephyr-v4.4.2-tester-update-single-subscriber.patch`](../firmware/patches/zephyr-v4.4.2-tester-update-single-subscriber.patch)，让两种 update 都显式选择唯一模式匹配连接，不进入第 5 级私有 BTP 扩展。补丁原因、四组固件对照和 RF 证据见 [`docs/research/2026-09-09-phase3-notification-indication-rf.md`](research/2026-09-09-phase3-notification-indication-rf.md)。
+Phase 3 已按该顺序执行到第 4 级：原样 Tester 的 Notification 首轮通过，但 Indication 的 `bt_gatt_indicate(NULL, ...)` 在固定单连接实机上同步失败，且 Set Value 路径丢弃 allocation/native send status；只修 Indication 后，跨模式复跑又暴露 Notification `conn=NULL` failure。Kconfig/overlay 不能修复该 C 逻辑，另建完整 project app 会复制大量 Tester 实现。因此先保留历史对照补丁 [`firmware/patches/archive/zephyr-v4.4.2-tester-update-single-subscriber.patch`](../firmware/patches/archive/zephyr-v4.4.2-tester-update-single-subscriber.patch)，并已将最终修复移植到 `VIDLG/zephyr` 的集成 commit；nrftest 默认构建不再应用 patch。fork 集成保持两种 update 都显式选择唯一模式匹配连接，不进入第 5 级私有 BTP 扩展。补丁原因、四组固件对照和旧版 RF 证据见 [`docs/research/2026-09-09-phase3-notification-indication-rf.md`](research/2026-09-09-phase3-notification-indication-rf.md)。
 
-Phase 4 继续停留在第 4 级：stock Tester 把第一个 Service 注册在 `server_svcs[1]`，removal 却只搜索 `server_svcs[0]`，并使最大 Service 数量存在越界风险。组合 patch 将注册索引修正为 `svc_count - 1` 并增加数组容量保护；一次标准 BTP opcode `0x23` 的 Profile A removal 和不同 Profile B rebuild 已通过。该 patch 不试图回收 Tester append-only backing state，也没有新增私有 BTP opcode。详见 [`docs/research/2026-09-09-phase4-database-lifecycle-and-reset.md`](research/2026-09-09-phase4-database-lifecycle-and-reset.md)。
+Phase 4 发现的 stock Tester 问题是：第一个 Service 注册索引错误，且最大 Service 数量存在越界风险。修复已集成进 `VIDLG/zephyr` commit `b64b351b49c027a1c56cb234f99538e168be315a`；它不试图回收 Tester append-only backing state，也没有新增私有 BTP opcode。v4.4.2 的一次 removal/rebuild RF 证据仍见 [`docs/research/2026-09-09-phase4-database-lifecycle-and-reset.md`](research/2026-09-09-phase4-database-lifecycle-and-reset.md)，fork 候选必须重新验证。
 
 ### 11.3 BTP 与日志隔离
 
@@ -1493,7 +1494,7 @@ failure classification
 | macOS USB 行为变化 | 使用 CDC serial，不 claim HCI；仍在真实 macOS 版本上执行枚举和恢复门 |
 | Linux 串口权限 | 显式文档和 doctor，不在普通运行中静默提权或安装规则 |
 | 可选 reset 后端口变化 | 仅对启用的 reset backend 按 hardware serial/VID/PID 重新发现，不缓存旧 COM/tty 名；普通 resident lifecycle 不要求 reset |
-| 上游 patch 长期漂移 | upstream-first、最小 patch、固定 revision、维护 patch 清单 |
+| fork 集成源码漂移 | 固定 `VIDLG/zephyr` commit；历史 patch 仅保留 provenance；更新 fork 后必须重新 build/package/RF 验证 |
 | 把 nRF 结果泛化到其他 provider | 报告按 fixture、DUT 平台和 firmware identity 隔离 |
 
 ---
@@ -1528,7 +1529,7 @@ archive/connectivity-blatann-2026-09-06/
 
 ## 23. 当前下一步
 
-Phase 0 和 Phase 1 已于 2026-09-08 通过，Phase 2、Phase 3 和 Phase 4 已于 2026-09-09 通过。当前 project-managed candidate 使用固定 upstream Tester 加 `single-subscriber-database-lifecycle` 组合 patch；unsigned DFU ZIP SHA-256 为 `3393e36271aa31f4d93a6802765cb364030c482c51524961460539446fbb6715`。新候选已重跑通过两种 write 和 `Notification → Indication → Notification`。一次 Profile A 标准 removal 后构建不同 Profile B 通过，但 Profile B 随后的标准 BTP `Set Value` 失败，证明该 one-shot 实验后必须退出当前 boot。人工重新上电一次后，canonical Profile A fresh provision 和 10-cycle resident lifecycle 已通过；正常 10 轮之间没有 reset、拔插或 rebuild：
+Phase 0 和 Phase 1 已于 2026-09-08 通过，Phase 2、Phase 3 和 Phase 4 已于 2026-09-09 通过。当前 fork 集成候选使用 `VIDLG/zephyr` commit `b64b351b49c027a1c56cb234f99538e168be315a`；其 build/package/RF 结果尚未重新建立，旧 upstream v4.4.2 的 unsigned DFU ZIP SHA-256 `3393e36271aa31f4d93a6802765cb364030c482c51524961460539446fbb6715` 仅作历史对照。新候选已重跑通过两种 write 和 `Notification → Indication → Notification`。一次 Profile A 标准 removal 后构建不同 Profile B 通过，但 Profile B 随后的标准 BTP `Set Value` 失败，证明该 one-shot 实验后必须退出当前 boot。人工重新上电一次后，canonical Profile A fresh provision 和 10-cycle resident lifecycle 已通过；正常 10 轮之间没有 reset、拔插或 rebuild：
 
 | 顺序 | Phase 4 工作 | 状态 | 关键边界 |
 |---:|---|---:|---|
@@ -1544,11 +1545,12 @@ Phase 4 已达到当前退出条件，证据和恢复边界见 [`docs/research/2
 
 | 顺序 | Phase 5 工作 | 状态 | 边界 |
 |---:|---|---:|---|
-| 1 | Windows Host 源码安全加固与回归 | **通过** | 132 unit tests、lint、固定 upstream/tools verify、实机 resident `host-doctor` |
-| 2 | Windows managed driver provisioning | 待执行，非 Host gate | VC++ Runtime 已由 Pixi 管理；Nordic receipt 仅由显式 UAC `setup-platform-provisioning` 建立，功能以 `host-doctor`/实际 flash 为准 |
-| 3 | Linux x64 Host gate | - | 必须实机验证 udev、串口、socat、RF 和 repeated reopen |
-| 4 | macOS Apple Silicon Host gate | - | 必须实机验证 USB CDC、权限、socat、RF 和 repeated reopen |
-| 5 | AutoPTS bounded teardown 决策 | 待审 | 子进程隔离会改变 Host 进程结构，不能作为普通修复静默引入 |
+| 1 | Windows Host 源码安全加固与回归 | **通过** | 136 unit tests、lint、固定工具 verify、实机 resident `host-doctor`；旧固件证据不覆盖新 fork |
+| 2 | `VIDLG/zephyr` fork 集成候选 build/package/RF 回归 | 代码/build/package 通过，RF 待执行 | commit `b64b351b49c027a1c56cb234f99538e168be315a` 已集成；必须刷写新 package 后重跑 BTP/GAP/GATT/Notification/Indication/recovery |
+| 3 | Windows managed driver provisioning | 待执行，非 Host gate | VC++ Runtime 已由 Pixi 管理；Nordic receipt 仅由显式 UAC `setup-platform-provisioning` 建立，功能以 `host-doctor`/实际 flash 为准 |
+| 4 | Linux x64 Host gate | - | 必须实机验证 udev、串口、socat、RF 和 repeated reopen |
+| 5 | macOS Apple Silicon Host gate | - | 必须实机验证 USB CDC、权限、socat、RF 和 repeated reopen |
+| 6 | AutoPTS bounded teardown 决策 | 待审 | 子进程隔离会改变 Host 进程结构，不能作为普通修复静默引入 |
 
 后续仍必须遵守：
 
