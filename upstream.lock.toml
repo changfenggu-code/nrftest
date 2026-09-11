@@ -2,12 +2,11 @@
 # tools/setup_upstream.py 使用这些固定值安装和验证源码；本机安装路径由 nrftest.local.toml 提供。
 
 schema_version = 1
-checked_at = "2026-09-06"
+checked_at = "2026-09-11"
 
 [zephyr]
-repository = "https://github.com/zephyrproject-rtos/zephyr.git"
-tag = "v4.4.2"
-commit = "dccb09599635bdff17633fa7e9dab014b91dce90"
+repository = "https://github.com/VIDLG/zephyr.git"
+commit = "b64b351b49c027a1c56cb234f99538e168be315a"
 sdk_version = "1.0.1"
 sdk_installer = "west sdk install"
 sdk_gnu_toolchains = ["arm-zephyr-eabi"]

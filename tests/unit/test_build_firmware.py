@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -6,25 +7,13 @@ import pytest
 from tools.build_firmware import (
     FirmwareBuildError,
     _build_environment,
+    _write_manifest,
     parse_dotconfig,
-    patch_cache_root,
     validate_flash_segments,
     validate_required_config,
 )
 from tools.config import ResolvedValue
 from tools.setup_host_tools import load_dtc_pin, managed_dtc_path
-
-
-def test_patch_cache_follows_zephyr_drive_on_windows() -> None:
-    configured = Path("D:/nrftest-cache")
-    zephyr_root = Path("E:/nrftest-upstream/zephyrproject/zephyr")
-
-    actual = patch_cache_root(configured, zephyr_root)
-
-    if os.name == "nt":
-        assert actual == Path("E:/nrftest-upstream/.nrftest-cache")
-    else:
-        assert actual == configured
 
 
 @pytest.mark.skipif(os.name != "nt", reason="managed portable DTC is Windows-specific")
@@ -41,6 +30,23 @@ def test_build_uses_managed_windows_dtc_without_explicit_override(tmp_path: Path
     environment = _build_environment(settings, tmp_path / "zephyr", tmp_path / "sdk")
 
     assert environment["PATH"].split(os.pathsep)[0] == str(dtc.parent)
+
+
+def test_build_manifest_records_locked_source_without_local_patch(tmp_path: Path) -> None:
+    output = tmp_path / "zephyr"
+    output.mkdir()
+    for name in ("zephyr.elf", "zephyr.hex", "zephyr.bin"):
+        _ = (output / name).write_bytes(name.encode("ascii"))
+
+    manifest_path = _write_manifest(tmp_path, [(0x1000, 0x2000)], {})
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest["zephyr"]["repository"].endswith("/zephyr.git")
+    assert len(manifest["zephyr"]["commit"]) == 40
+    assert "tag" not in manifest["zephyr"]
+    assert manifest["inputs"]["tester_patch"] is None
+    assert "locked Zephyr repository and commit" in manifest["license"]["notice"]
+    assert "local Tester patch" in manifest["license"]["notice"]
 
 
 def test_generated_config_and_flash_preserve_bootloader_boundaries(tmp_path: Path) -> None:

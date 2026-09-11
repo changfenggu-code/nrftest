@@ -139,7 +139,8 @@ def run_doctor(
             "python": platform.python_version(),
         },
         "upstream": {
-            "zephyr_revision": upstream.zephyr.tag,
+            "zephyr_repository": upstream.zephyr.repository,
+            "zephyr_revision": upstream.zephyr.commit,
             "zephyr_commit": upstream.zephyr.commit,
             "zephyr_sdk_version": upstream.zephyr.sdk_version,
             "autopts_commit": upstream.autopts.commit,

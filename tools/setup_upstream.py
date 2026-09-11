@@ -24,7 +24,6 @@ class SetupError(RuntimeError):
 @dataclass(frozen=True)
 class ZephyrPin:
     repository: str
-    tag: str
     commit: str
     sdk_version: str
     sdk_gnu_toolchains: tuple[str, ...]
@@ -73,7 +72,6 @@ def load_upstream_pins(path: Path = LOCK_PATH) -> UpstreamPins:
         toolchains.append(item)
     zephyr_pin = ZephyrPin(
         repository=_required_string(zephyr, "repository", "zephyr"),
-        tag=_required_string(zephyr, "tag", "zephyr"),
         commit=_required_string(zephyr, "commit", "zephyr"),
         sdk_version=_required_string(zephyr, "sdk_version", "zephyr"),
         sdk_gnu_toolchains=tuple(toolchains),
@@ -157,10 +155,18 @@ def _validate_repository(path: Path, repository: str, commit: str, name: str) ->
         raise SetupError(f"{name} destination is not a Git checkout: {path}")
     remote = _capture(["git", "remote", "get-url", "origin"], cwd=path)
     if _normalized_repository(remote) != _normalized_repository(repository):
-        raise SetupError(f"{name} origin mismatch: expected {repository}, found {remote}")
+        raise SetupError(
+            f"{name} origin mismatch: expected {repository}, found {remote}; "
+            + "use a new independent workspace by changing the machine-local configuration; "
+            + f"refusing to reset or modify {path}"
+        )
     head = _capture(["git", "rev-parse", "HEAD"], cwd=path)
     if head != commit:
-        raise SetupError(f"{name} revision mismatch: expected {commit}, found {head}")
+        raise SetupError(
+            f"{name} revision mismatch: expected {commit}, found {head}; "
+            + "use a new independent workspace by changing the machine-local configuration; "
+            + f"refusing to reset or modify {path}"
+        )
     dirty = _capture(["git", "status", "--porcelain"], cwd=path)
     if dirty:
         raise SetupError(f"{name} checkout contains local changes; refusing to modify {path}")
@@ -175,16 +181,40 @@ def _ensure_empty_or_missing(path: Path, description: str) -> None:
         raise SetupError(f"{description} destination already contains files: {path}")
 
 
+def _marker_matches(marker: Path, commit: str) -> bool:
+    try:
+        return marker.read_text(encoding="utf-8").strip() == f"zephyr={commit}"
+    except (OSError, UnicodeError):
+        return False
+
+
+def _validate_zephyr_root_layout(zephyr_root: Path) -> None:
+    if zephyr_root.name != "zephyr":
+        raise SetupError(
+            "Zephyr configuration root must be the west manifest project directory named "
+            + f"'zephyr'; found {zephyr_root}. Change the machine-local configuration to "
+            + "an independent workspace whose manifest path and configuration root agree."
+        )
+
+
 def _setup_zephyr_sources(
     pin: ZephyrPin,
     zephyr_root: Path,
     *,
     update: bool,
 ) -> None:
+    _validate_zephyr_root_layout(zephyr_root)
     workspace_root = zephyr_root.parent
     west_root = workspace_root / ".west"
     marker = workspace_root / SOURCES_READY_MARKER
     if not west_root.exists():
+        if (zephyr_root / ".git").exists():
+            _validate_repository(zephyr_root, pin.repository, pin.commit, "Zephyr")
+            raise SetupError(
+                f"Zephyr checkout exists without a west workspace: {zephyr_root}; "
+                + "use a new independent workspace by changing the machine-local configuration; "
+                + "refusing to modify the existing checkout"
+            )
         _ensure_empty_or_missing(workspace_root, "Zephyr workspace")
         workspace_root.parent.mkdir(parents=True, exist_ok=True)
         _run(
@@ -194,13 +224,16 @@ def _setup_zephyr_sources(
                 "-m",
                 pin.repository,
                 "--mr",
-                pin.tag,
+                "main",
                 str(workspace_root),
             ]
         )
+        _run(["git", "fetch", "origin", pin.commit], cwd=zephyr_root)
+        _run(["git", "checkout", "--detach", pin.commit], cwd=zephyr_root)
     _validate_repository(zephyr_root, pin.repository, pin.commit, "Zephyr")
-    if update or not marker.exists():
+    if update or not _marker_matches(marker, pin.commit):
         _run(["west", "update"], cwd=workspace_root)
+        marker.parent.mkdir(parents=True, exist_ok=True)
         _ = marker.write_text(f"zephyr={pin.commit}\n", encoding="utf-8")
     else:
         print(f"Zephyr modules already initialized: {workspace_root}")
@@ -290,7 +323,7 @@ def print_status(pins: UpstreamPins, settings: dict[str, ResolvedValue]) -> None
     zephyr_root = _required_path(settings, "zephyr_root")
     sdk_root = _required_path(settings, "zephyr_sdk_root")
     autopts_root = _required_path(settings, "autopts_root")
-    print(f"Zephyr: {pins.zephyr.tag} ({pins.zephyr.commit})")
+    print(f"Zephyr: {pins.zephyr.repository} ({pins.zephyr.commit})")
     print(f"  path: {zephyr_root} [{_path_state(zephyr_root)}]")
     print(f"Zephyr SDK: {pins.zephyr.sdk_version}")
     print(f"  path: {sdk_root} [{_path_state(sdk_root)}]")
@@ -335,8 +368,11 @@ def verify_upstream(pins: UpstreamPins, settings: dict[str, ResolvedValue]) -> N
     autopts_root = _required_path(settings, "autopts_root")
     marker = zephyr_root.parent / SOURCES_READY_MARKER
     _validate_repository(zephyr_root, pins.zephyr.repository, pins.zephyr.commit, "Zephyr")
-    if not marker.exists():
-        raise SetupError(f"Zephyr west modules completion marker is missing: {marker}")
+    if not _marker_matches(marker, pins.zephyr.commit):
+        raise SetupError(
+            "Zephyr west modules completion marker is missing or does not match "
+            + f"{pins.zephyr.commit}: {marker}"
+        )
     module_count = _validate_west_modules(zephyr_root.parent)
     _validate_repository(autopts_root, pins.autopts.repository, pins.autopts.commit, "AutoPTS")
     _validate_sdk(sdk_root, pins.zephyr.sdk_version)

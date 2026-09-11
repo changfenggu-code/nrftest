@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
@@ -22,7 +21,7 @@ BOARD = "nrf52840dongle/nrf52840"
 APPLICATION_RELATIVE_PATH = Path("tests/bluetooth/tester")
 CONFIG_PATH = PROJECT_ROOT / "firmware" / "app" / "pca10059.conf"
 OVERLAY_PATH = PROJECT_ROOT / "firmware" / "app" / "pca10059.overlay"
-PATCH_ROOT = PROJECT_ROOT / "firmware" / "patches"
+
 OUTPUT_DIRECTORY_NAME = "pca10059-tester"
 NRF52840_FLASH_END = 0x100000
 APPLICATION_START = 0x1000
@@ -142,75 +141,6 @@ def _run_build(command: list[str], *, cwd: Path, environment: Mapping[str, str])
         raise FirmwareBuildError(f"firmware build failed: {error}") from error
 
 
-def _run_patch(command: list[str], *, cwd: Path) -> None:
-    print(f"+ {_display_command(command)}")
-    try:
-        _ = subprocess.run(command, cwd=cwd, check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError) as error:
-        stderr = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) else ""
-        detail = f": {stderr}" if stderr else ""
-        raise FirmwareBuildError(f"Tester patch application failed{detail}") from error
-
-
-def patch_cache_root(configured_cache: Path, zephyr_root: Path) -> Path:
-    if os.name != "nt":
-        return configured_cache
-    cache_drive = os.path.splitdrive(str(configured_cache.resolve()))[0].casefold()
-    zephyr_drive = os.path.splitdrive(str(zephyr_root.resolve()))[0].casefold()
-    if cache_drive == zephyr_drive:
-        return configured_cache
-    fallback = zephyr_root.parent.parent / ".nrftest-cache"
-    print(
-        "Windows west requires the staged application on the Zephyr workspace drive; "
-        + f"using {fallback} instead of {configured_cache}"
-    )
-    return fallback
-
-
-def stage_patched_application(
-    application: Path,
-    cache_root: Path,
-    patch_path: Path,
-) -> tuple[Path, dict[str, object]]:
-    resolved_patch = patch_path.resolve()
-    if not resolved_patch.is_relative_to(PATCH_ROOT.resolve()):
-        raise FirmwareBuildError(f"Tester patch must be tracked under {PATCH_ROOT}")
-    if not resolved_patch.is_file():
-        raise FirmwareBuildError(f"Tester patch does not exist: {resolved_patch}")
-
-    source_file = application / "src" / "btp_gatt.c"
-    if not source_file.is_file():
-        raise FirmwareBuildError(f"upstream Tester source is missing: {source_file}")
-    upstream_sha256 = sha256_file(source_file)
-    staged_application = cache_root / "zephyr-tester-patched"
-    if staged_application.exists():
-        shutil.rmtree(staged_application)
-    staged_application.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(application, staged_application)
-
-    try:
-        patch_argument = os.path.relpath(resolved_patch, staged_application)
-    except ValueError:
-        patch_argument = resolved_patch.as_posix()
-    check_command = ["git", "apply", "--check", "--whitespace=error-all", patch_argument]
-    apply_command = ["git", "apply", "--whitespace=error-all", patch_argument]
-    _run_patch(check_command, cwd=staged_application)
-    _run_patch(apply_command, cwd=staged_application)
-
-    patched_file = staged_application / "src" / "btp_gatt.c"
-    patched_sha256 = sha256_file(patched_file)
-    if patched_sha256 == upstream_sha256:
-        raise FirmwareBuildError("Tester patch did not change src/btp_gatt.c")
-    return staged_application, {
-        "path": resolved_patch.relative_to(PROJECT_ROOT).as_posix(),
-        "sha256": sha256_file(resolved_patch),
-        "upstream_file": APPLICATION_RELATIVE_PATH.joinpath("src/btp_gatt.c").as_posix(),
-        "upstream_sha256": upstream_sha256,
-        "patched_sha256": patched_sha256,
-        "wire_protocol_changed": False,
-    }
-
-
 def _build_environment(
     settings: Mapping[str, ResolvedValue], zephyr_root: Path, sdk_root: Path
 ) -> dict[str, str]:
@@ -237,7 +167,6 @@ def _write_manifest(
     build_root: Path,
     flash_segments: Sequence[tuple[int, int]],
     generated_config: Mapping[str, str],
-    tester_patch: Mapping[str, object] | None,
 ) -> Path:
     pins = load_upstream_pins()
     zephyr_output = build_root / "zephyr"
@@ -254,7 +183,6 @@ def _write_manifest(
         "application": APPLICATION_RELATIVE_PATH.as_posix(),
         "zephyr": {
             "repository": pins.zephyr.repository,
-            "tag": pins.zephyr.tag,
             "commit": pins.zephyr.commit,
             "sdk_version": pins.zephyr.sdk_version,
             "gnu_toolchains": list(pins.zephyr.sdk_gnu_toolchains),
@@ -268,7 +196,8 @@ def _write_manifest(
                 "path": OVERLAY_PATH.relative_to(PROJECT_ROOT).as_posix(),
                 "sha256": sha256_file(OVERLAY_PATH),
             },
-            "tester_patch": dict(tester_patch) if tester_patch is not None else None,
+            # Retained for schema compatibility: local patches are no longer supported.
+            "tester_patch": None,
         },
         "validated_config": {name: generated_config.get(name, "n") for name in REQUIRED_CONFIG},
         "nrf52840_flash_segments": [
@@ -279,10 +208,8 @@ def _write_manifest(
         "license": {
             "upstream_tester": "Apache-2.0",
             "notice": (
-                "Built from the pinned upstream Zephyr source and a tracked patch; "
-                + "no Tester source is vendored."
-                if tester_patch is not None
-                else "Built from the pinned upstream Zephyr source; no Tester source is vendored."
+                "Built directly from the locked Zephyr repository and commit; "
+                + "no local Tester patch is applied and no Tester source is vendored."
             ),
         },
     }
@@ -291,11 +218,7 @@ def _write_manifest(
     return path
 
 
-def build_firmware(
-    settings: dict[str, ResolvedValue],
-    *,
-    tester_patch: Path | None = None,
-) -> None:
+def build_firmware(settings: dict[str, ResolvedValue]) -> None:
     pins = load_upstream_pins()
     verify_upstream(pins, settings)
     verify_host_tools(load_dtc_pin(), settings)
@@ -309,15 +232,6 @@ def build_firmware(
             raise FirmwareBuildError(f"required firmware input does not exist: {required}")
     build_root.parent.mkdir(parents=True, exist_ok=True)
 
-    application = upstream_application
-    patch_evidence: dict[str, object] | None = None
-    if tester_patch is not None:
-        application, patch_evidence = stage_patched_application(
-            upstream_application,
-            patch_cache_root(_required_path(settings, "cache_dir"), zephyr_root),
-            tester_patch,
-        )
-
     command = [
         "west",
         "build",
@@ -326,7 +240,7 @@ def build_firmware(
         BOARD,
         "--build-dir",
         str(build_root),
-        str(application),
+        str(upstream_application),
         "--",
         f"-DEXTRA_CONF_FILE={CONFIG_PATH.as_posix()}",
         f"-DDTC_OVERLAY_FILE={OVERLAY_PATH.as_posix()}",
@@ -345,7 +259,6 @@ def build_firmware(
         build_root,
         flash_segments,
         generated_config,
-        patch_evidence,
     )
     print(f"Firmware verified: {build_root / 'zephyr' / 'zephyr.hex'}")
     print(f"Build manifest: {manifest}")
@@ -353,20 +266,13 @@ def build_firmware(
 
 class FirmwareArguments(argparse.Namespace):
     config: str | None = None
-    tester_patch: str | None = None
     build_dir: str | None = None
-    cache_dir: str | None = None
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build the pinned Zephyr Tester for PCA10059")
     _ = parser.add_argument("--config", help="path to the machine-local TOML configuration")
     _ = parser.add_argument("--build-dir", help="firmware build root override")
-    _ = parser.add_argument("--cache-dir", help="firmware staging cache override")
-    _ = parser.add_argument(
-        "--tester-patch",
-        help="tracked patch under firmware/patches, applied to a staged Tester source copy",
-    )
     return parser
 
 
@@ -374,13 +280,11 @@ def main() -> int:
     arguments = FirmwareArguments()
     _ = _parser().parse_args(namespace=arguments)
     try:
-        patch_path = Path(arguments.tester_patch) if arguments.tester_patch is not None else None
         build_firmware(
             resolve_current_settings(
-                {"build_dir": arguments.build_dir, "cache_dir": arguments.cache_dir},
+                {"build_dir": arguments.build_dir},
                 config_path=arguments.config,
-            ),
-            tester_patch=patch_path,
+            )
         )
     except (ConfigError, FirmwareBuildError) as error:
         print(f"firmware build error: {error}", file=sys.stderr)

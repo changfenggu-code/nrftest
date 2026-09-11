@@ -15,7 +15,7 @@
 当前主线使用：
 
 - Nordic nRF52840 Dongle（PCA10059）；
-- upstream Zephyr Bluetooth Tester/BTP Server；
+- `VIDLG/zephyr` fork 中固定集成 commit 的 Zephyr Bluetooth Tester/BTP Server；
 - BTP over USB CDC ACM；
 - 固定 AutoPTS `pybtp` Client；
 - Pixi 管理的 Windows x64、Linux x64 和 macOS Apple Silicon Host 环境；
@@ -63,7 +63,7 @@ pixi run just test
 ## 目录
 
 ```text
-firmware/   Zephyr 配置、上游 patch 和 DFU package 规则
+firmware/   Zephyr 配置、历史 patch provenance 和 DFU package 规则
 host/       nrftest Python Host API
 profiles/   可复用的 Peripheral Profile JSON
 tools/      setup、build、flash 和诊断工具

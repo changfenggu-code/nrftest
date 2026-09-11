@@ -103,40 +103,16 @@ toolchain-paths:
 check-tools:
     python tools/config.py check-tools
 
-# Build the active project-managed Tester candidate with the tracked Phase 4 patch.
+# Build the Tester directly from the locked Zephyr source.
 firmware-build: require-local-config
-    python -m tools.build_firmware --tester-patch "firmware/patches/zephyr-v4.4.2-tester-single-subscriber-database-lifecycle.patch"
+    python -m tools.build_firmware
 
-# Build the unmodified upstream Tester in an isolated directory for explicit comparison only.
-firmware-build-stock: require-local-config
-    python -m tools.build_firmware --build-dir ".work/build-stock" --cache-dir ".work/cache-stock"
-
-# Compatibility name for rebuilding the same active project-managed candidate.
-firmware-build-patched: require-local-config
-    python -m tools.build_firmware --tester-patch "firmware/patches/zephyr-v4.4.2-tester-single-subscriber-database-lifecycle.patch"
-
-# Package the active validated Tester HEX for the stock PCA10059 USB bootloader.
+# Package the validated Tester HEX for the stock PCA10059 USB bootloader.
 firmware-package: require-local-config
     python -m tools.package_firmware
 
-# Package an explicitly built stock comparison candidate.
-firmware-package-stock: require-local-config
-    python -m tools.package_firmware --build-dir ".work/build-stock"
-
-# Compatibility name for packaging the same active project-managed candidate.
-firmware-package-patched: require-local-config
-    python -m tools.package_firmware
-
-# Flash the active package after explicit bootloader-port and SHA identity checks.
+# Flash the package after explicit bootloader-port and SHA identity checks.
 firmware-flash port package_sha256: require-local-config
-    python -m tools.flash_firmware --port "{{port}}" --confirm-sha256 "{{package_sha256}}"
-
-# Flash an explicitly packaged stock comparison candidate.
-firmware-flash-stock port package_sha256: require-local-config
-    python -m tools.flash_firmware --build-dir ".work/build-stock" --port "{{port}}" --confirm-sha256 "{{package_sha256}}"
-
-# Compatibility name for flashing the same active project-managed candidate.
-firmware-flash-patched port package_sha256: require-local-config
     python -m tools.flash_firmware --port "{{port}}" --confirm-sha256 "{{package_sha256}}"
 
 # Validate a Profile contract and print its identity, semantic signature, and source checksum.
