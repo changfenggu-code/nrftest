@@ -61,7 +61,7 @@ flowchart TB
 | Zephyr SDK | `1.0.1` / `arm-zephyr-eabi` |
 | AutoPTS | `54e81c7f3495bce72e5f688e9c996b85b8272799` |
 | Firmware logging | `CONFIG_TEST_LOGGING_DEFAULTS=n`、`CONFIG_LOG=n` |
-| Patch | `firmware/patches/zephyr-v4.4.2-tester-single-subscriber-database-lifecycle.patch` |
+| Patch（现归档位置） | `firmware/patches/archive/zephyr-v4.4.2-tester-single-subscriber-database-lifecycle.patch` |
 | Patch SHA-256 | `d13ac4e3f8f79a6a5442de1f108ca18c8f4ce242c71f5417e68a36bff5baf636` |
 | Upstream `btp_gatt.c` SHA-256 | `3b87af97c50784b23d61e7764eeaf7855ff3566048e0e71246f76be926f62c70` |
 | Patched `btp_gatt.c` SHA-256 | `b0435f59e67267195bd7c1ecb9ea430f1804fc23c717e7d77136e06625a099e2` |
